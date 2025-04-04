@@ -1,0 +1,87 @@
+-- Trigger DDL Statements
+DELIMITER $$
+
+USE `pmb_annual_november_2024`$$
+
+CREATE
+DEFINER=`root`@`localhost`
+TRIGGER `pmb_annual_november_2024`.`answerscripts_AFTER_INSERT`
+AFTER INSERT ON `pmb_annual_november_2024`.`answerscripts`
+FOR EACH ROW
+BEGIN
+
+
+-- Check if a row with the same data is there
+    IF EXISTS (SELECT 1 FROM report_gunning_scan_uploaded WHERE slno = NEW.barcode) THEN
+       
+        UPDATE report_gunning_scan_uploaded
+        SET isScanned = '1',
+        anbarcode = NEW.barcode,
+        anshiddencode = new.hidden_code,
+        ansqpcode = new.qpcode
+        WHERE slno = NEW.barcode;
+    ELSE
+        
+         INSERT INTO`report_gunning_scan_uploaded` ( `slno`, `anBarcode`, `ansHiddenCode`, `scBarcode`,
+         `ansQpcode`, `scanQpcode`, `IsGunned`, `isScanned`, `isUploaded`) 
+                VALUES ( '', NEW.barcode, NEW.hidden_code, '',  NEW.qpcode, '', '0', '1', '0');
+   
+   END IF;
+
+END$$
+
+_________________________________________________________________________________________________________________________________________
+
+-- Trigger DDL Statements
+DELIMITER $$
+
+USE `pmb_annual_november_2024`$$
+
+CREATE
+DEFINER=`root`@`localhost`
+TRIGGER `pmb_annual_november_2024`.`scannedscripts_AFTER_INSERT`
+AFTER INSERT ON `pmb_annual_november_2024`.`scannedscripts`
+FOR EACH ROW
+BEGIN
+    IF EXISTS (SELECT 1 FROM `report_gunning_scan_uploaded` WHERE `ansHiddenCode` = NEW.`barcode`) THEN
+        UPDATE `report_gunning_scan_uploaded`
+        SET `isUploaded` = '1',
+            `scBarcode` = NEW.`barcode`,
+            `scanQpcode` = NEW.`Qpcode`
+        WHERE `ansHiddenCode` = NEW.`barcode`;
+    END IF;
+END$$
+
+___________________________________________________________________________________________________________________________________________
+
+-- Trigger DDL Statements
+DELIMITER $$
+
+USE `pmb_annual_november_2024`$$
+
+CREATE
+DEFINER=`root`@`localhost`
+TRIGGER `pmb_annual_november_2024`.`gunnedscripts_AFTER_INSERT`
+AFTER INSERT ON `pmb_annual_november_2024`.`gunnedscripts`
+FOR EACH ROW
+BEGIN
+    -- Check if a row with the same slno exists
+    IF EXISTS (SELECT 1 FROM report_gunning_scan_uploaded WHERE anBarcode = NEW.slno) THEN
+        -- Update only if record exists
+        UPDATE report_gunning_scan_uploaded
+        SET IsGunned = '1',
+            gunQpcode = NEW.qpcode,
+            slno = new.slno -- Added this line to update qpcode when record exists
+        WHERE anBarcode = NEW.slno;
+    ELSE
+        -- Insert new record with default values
+        INSERT INTO `report_gunning_scan_uploaded` 
+        (`slno`, `anBarcode`, `ansHiddenCode`, `scBarcode`,
+         `gunQpcode`, `ansQpcode`, `scanQpcode`, `IsGunned`, `isScanned`, `isUploaded`) 
+        VALUES 
+        (NEW.slno, '', '', '', 
+         NEW.qpcode, '', '', '1', '0', '0');
+    END IF;
+END$$
+
+
