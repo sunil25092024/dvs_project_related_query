@@ -1,87 +1,117 @@
 -- Trigger DDL Statements
 DELIMITER $$
 
-USE `pmb_annual_november_2024`$$
+USE `pmb_supplementary_may_2025`$$
 
 CREATE
 DEFINER=`root`@`localhost`
-TRIGGER `pmb_annual_november_2024`.`answerscripts_AFTER_INSERT`
-AFTER INSERT ON `pmb_annual_november_2024`.`answerscripts`
+TRIGGER `pmb_supplementary_may_2025`.`answerscripts_AFTER_INSERT`
+AFTER INSERT ON `pmb_supplementary_may_2025`.`answerscripts`
 FOR EACH ROW
 BEGIN
 
 
 -- Check if a row with the same data is there
-    IF EXISTS (SELECT 1 FROM report_gunning_scan_uploaded WHERE slno = NEW.barcode) THEN
+    IF EXISTS (SELECT 1 FROM report_gunning_scan_uploaded WHERE GunnedBookletNo = NEW.barcode) THEN
        
         UPDATE report_gunning_scan_uploaded
         SET isScanned = '1',
-        anbarcode = NEW.barcode,
-        anshiddencode = new.hidden_code,
-        ansqpcode = new.qpcode
-        WHERE slno = NEW.barcode;
+        ScannedBookletNo = NEW.barcode,
+        ScannedHiddenCode = new.hidden_code,
+        ScannedQpcode = new.qpcode
+        WHERE GunnedBookletNo = NEW.barcode;
     ELSE
         
-         INSERT INTO`report_gunning_scan_uploaded` ( `slno`, `anBarcode`, `ansHiddenCode`, `scBarcode`,
-         `ansQpcode`, `scanQpcode`, `IsGunned`, `isScanned`, `isUploaded`) 
-                VALUES ( '', NEW.barcode, NEW.hidden_code, '',  NEW.qpcode, '', '0', '1', '0');
+         INSERT INTO `report_gunning_scan_uploaded` 
+        (`GunnedBookletNo`, `ScannedBookletNo`, `ScannedHiddenCode`, `UploadedHiddenCode`,
+         `ScannedQpcode`, `UploadedQpcode`, `IsGunned`, `isScanned`, `isUploaded`,`IsQPMatched`, `Part1QP`, `ValuationQP`, `IsPart1Matched`)
+
+        VALUES ( '', NEW.barcode, NEW.hidden_code, '',  NEW.qpcode, '', '0', '1', '0','0','','','0');
    
    END IF;
 
 END$$
-
-_________________________________________________________________________________________________________________________________________
+_______________________________________
 
 -- Trigger DDL Statements
 DELIMITER $$
 
-USE `pmb_annual_november_2024`$$
+USE `pmb_supplementary_may_2025`$$
 
 CREATE
 DEFINER=`root`@`localhost`
-TRIGGER `pmb_annual_november_2024`.`scannedscripts_AFTER_INSERT`
-AFTER INSERT ON `pmb_annual_november_2024`.`scannedscripts`
+TRIGGER `pmb_supplementary_may_2025`.`gunnedscripts_AFTER_INSERT`
+AFTER INSERT ON `pmb_supplementary_may_2025`.`gunnedscripts`
 FOR EACH ROW
 BEGIN
-    IF EXISTS (SELECT 1 FROM `report_gunning_scan_uploaded` WHERE `ansHiddenCode` = NEW.`barcode`) THEN
+  
+  
+-- Check if a row with the same slno exists
+  
+  
+IF EXISTS (SELECT 1 FROM report_gunning_scan_uploaded WHERE ScannedBookletNo = NEW.slno) THEN
+      
+  -- Update only if record exists
+       
+ UPDATE report_gunning_scan_uploaded
+        
+SET IsGunned = '1',
+            
+gunnedQpcode = NEW.qpcode,
+            
+GunnedBookletNo = new.slno -- Added this line to update qpcode when record exists
+     
+  WHERE ScannedBookletNo = NEW.slno;
+   
+
+ ELSE
+     
+   
+-- Insert new record with default values
+        
+INSERT INTO `report_gunning_scan_uploaded` 
+        
+(`GunnedBookletNo`, `ScannedBookletNo`, `ScannedHiddenCode`, `UploadedHiddenCode`,
+`gunnedQpcode`, `ScannedQpcode`, `UploadedQpcode`, `IsGunned`, `isScanned`, `isUploaded`,`IsQPMatched`, `Part1QP`, `ValuationQP`, `IsPart1Matched`)
+
+ VALUES 
+       
+ (NEW.slno, '', '', '', 
+        
+NEW.qpcode, '', '', '1', '0', '0','0','','','0');
+   
+ END IF;
+
+END$$
+
+_______________________________________
+
+-- Trigger DDL Statements
+DELIMITER $$
+
+USE `pmb_supplementary_may_2025`$$
+
+CREATE
+DEFINER=`root`@`localhost`
+TRIGGER `pmb_supplementary_may_2025`.`scannedscripts_AFTER_INSERT`
+AFTER INSERT ON `pmb_supplementary_may_2025`.`scannedscripts`
+FOR EACH ROW
+BEGIN
+    IF EXISTS (SELECT 1 FROM `report_gunning_scan_uploaded` WHERE `ScannedHiddenCode` = NEW.`barcode`) THEN
         UPDATE `report_gunning_scan_uploaded`
         SET `isUploaded` = '1',
-            `scBarcode` = NEW.`barcode`,
-            `scanQpcode` = NEW.`Qpcode`
-        WHERE `ansHiddenCode` = NEW.`barcode`;
+            
+            `UploadedHiddenCode` = NEW.`barcode`,
+            `UploadedQpcode` = NEW.`Qpcode`
+        WHERE `ScannedHiddenCode` = NEW.`barcode`;
+        
+       UPDATE `report_gunning_scan_uploaded`
+       SET `IsQPMatched` = '1'
+       WHERE
+      `GunnedQpcode` = NEW.`QpCode`
+       AND `ScannedQPCode` = NEW.`QpCode`
+       AND `ScannedHiddenCode` = NEW.`Barcode`;
+       
     END IF;
 END$$
-
-___________________________________________________________________________________________________________________________________________
-
--- Trigger DDL Statements
-DELIMITER $$
-
-USE `pmb_annual_november_2024`$$
-
-CREATE
-DEFINER=`root`@`localhost`
-TRIGGER `pmb_annual_november_2024`.`gunnedscripts_AFTER_INSERT`
-AFTER INSERT ON `pmb_annual_november_2024`.`gunnedscripts`
-FOR EACH ROW
-BEGIN
-    -- Check if a row with the same slno exists
-    IF EXISTS (SELECT 1 FROM report_gunning_scan_uploaded WHERE anBarcode = NEW.slno) THEN
-        -- Update only if record exists
-        UPDATE report_gunning_scan_uploaded
-        SET IsGunned = '1',
-            gunQpcode = NEW.qpcode,
-            slno = new.slno -- Added this line to update qpcode when record exists
-        WHERE anBarcode = NEW.slno;
-    ELSE
-        -- Insert new record with default values
-        INSERT INTO `report_gunning_scan_uploaded` 
-        (`slno`, `anBarcode`, `ansHiddenCode`, `scBarcode`,
-         `gunQpcode`, `ansQpcode`, `scanQpcode`, `IsGunned`, `isScanned`, `isUploaded`) 
-        VALUES 
-        (NEW.slno, '', '', '', 
-         NEW.qpcode, '', '', '1', '0', '0');
-    END IF;
-END$$
-
 
